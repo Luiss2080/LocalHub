@@ -609,12 +609,12 @@ $menuGroups = [
 
         <?php foreach ($menuGroups as $groupName => $links): ?>
             <div class="menu-group">
-                <div class="section-title"><?= $groupName ?></div>
+                <div class="section-title"><?= e($groupName) ?></div>
                 <nav>
                     <?php foreach ($links as $link): ?>
-                        <a href="<?= $link['url'] ?>" target="_blank" class="nav-link">
-                            <i class="fas <?= $link['icon'] ?>"></i>
-                            <span><?= $link['name'] ?></span>
+                        <a href="<?= e($link['url']) ?>" target="_blank" class="nav-link">
+                            <i class="fas <?= e($link['icon']) ?>"></i>
+                            <span><?= e($link['name']) ?></span>
                         </a>
                     <?php endforeach; ?>
                 </nav>
