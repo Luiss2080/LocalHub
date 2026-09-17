@@ -656,8 +656,8 @@ $menuGroups = [
                             <div>
                                 <div style="display:flex; justify-content:space-between;">
                                     <div class="card-name"><?= e($project['name']) ?></div>
-                                    <i class="fas fa-thumbtack pin-icon"
-                                        onclick="event.preventDefault(); togglePin(this, '<?= e($project['name']) ?>')"></i>
+                                    <i class="fas fa-thumbtack pin-icon" data-project-name="<?= e($project['name']) ?>"
+                                        onclick="event.preventDefault(); togglePin(this)"></i>
                                 </div>
                                 <div class="card-date"><span class="status-led"></span> <?= e($project['date']) ?></div>
                             </div>
@@ -698,7 +698,8 @@ $menuGroups = [
         let pinned = JSON.parse(localStorage.getItem('my_pinned') || '[]');
         let sortMode = 'date';
 
-        function togglePin(icon, name) {
+        function togglePin(icon) {
+            const name = icon.dataset.projectName;
             const index = pinned.indexOf(name);
             index > -1 ? pinned.splice(index, 1) : pinned.push(name);
             localStorage.setItem('my_pinned', JSON.stringify(pinned));
@@ -710,7 +711,7 @@ $menuGroups = [
         function render() {
             const items = Array.from(document.querySelectorAll('.project-item'));
             items.forEach(item => {
-                const name = item.querySelector('.pin-icon').getAttribute('onclick').match(/'([^']+)'/)[1];
+                const name = item.querySelector('.pin-icon').dataset.projectName;
                 pinned.includes(name) ? item.classList.add('pinned') : item.classList.remove('pinned');
             });
 
