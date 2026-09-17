@@ -5,6 +5,8 @@
  * Changes: Removed Design section, Restored Bold Gradient Logo
  */
 
+require_once __DIR__ . '/src/ProjectSorter.php';
+
 // Directories to ignore
 $ignore = array('.', '..', '.git', '.idea', 'vscode', 'node_modules', 'vendor');
 $dirs = array_filter(glob('*'), 'is_dir');
@@ -21,9 +23,7 @@ foreach ($dirs as $dir) {
     }
 }
 
-usort($projects, function ($a, $b) {
-    return $b['timestamp'] - $a['timestamp'];
-});
+$projects = ProjectSorter::byMostRecentlyModified($projects);
 
 // Sidebar Menus (Design Removed)
 $menuGroups = [
