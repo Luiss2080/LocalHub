@@ -7,18 +7,35 @@
 
 // Directories to ignore
 $ignore = array('.', '..', '.git', '.idea', 'vscode', 'node_modules', 'vendor');
-$dirs = array_filter(glob('*'), 'is_dir');
+// glob() returns false (not an empty array) if the current directory can't
+// be read at all, e.g. a permissions issue; fall back to an empty list
+// instead of feeding false into array_filter()/is_dir().
+$dirs = array_filter(glob('*') ?: [], 'is_dir');
 $projects = [];
 
 foreach ($dirs as $dir) {
-    if (!in_array($dir, $ignore)) {
-        $timestamp = filemtime($dir);
-        $projects[] = [
-            'name' => $dir,
-            'timestamp' => $timestamp,
-            'date' => date("M d", $timestamp),
-        ];
+    if (in_array($dir, $ignore, true)) {
+        continue;
     }
+
+    // A project folder can be deleted, renamed, or made unreadable by
+    // another process between the glob() call above and this line
+    // (classic TOCTOU race), or simply be a permission-denied mount.
+    // filemtime() returns false and raises an E_WARNING in that case;
+    // suppress the warning and just skip the entry instead of letting
+    // it leak a stat-failed warning into the page or, since PHP 8,
+    // pass a non-numeric false into date() (deprecated, and would
+    // render as "Jan 01" instead of being omitted).
+    $timestamp = @filemtime($dir);
+    if ($timestamp === false) {
+        continue;
+    }
+
+    $projects[] = [
+        'name' => $dir,
+        'timestamp' => $timestamp,
+        'date' => date("M d", $timestamp),
+    ];
 }
 
 usort($projects, function ($a, $b) {
