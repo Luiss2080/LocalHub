@@ -5,6 +5,8 @@
  * Changes: Removed Design section, Restored Bold Gradient Logo
  */
 
+require_once __DIR__ . '/src/ProjectSorter.php';
+
 /**
  * Escapes a value for safe output in an HTML context (text or attribute).
  * Project names come from real directory names on disk, which are not
@@ -50,9 +52,7 @@ foreach ($dirs as $dir) {
     ];
 }
 
-usort($projects, function ($a, $b) {
-    return $b['timestamp'] - $a['timestamp'];
-});
+$projects = ProjectSorter::byMostRecentlyModified($projects);
 
 // Sidebar Menus (Design Removed)
 $menuGroups = [
