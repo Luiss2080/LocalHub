@@ -7,20 +7,49 @@
 
 require_once __DIR__ . '/src/ProjectSorter.php';
 
+/**
+ * Escapes a value for safe output in an HTML context (text or attribute).
+ * Project names come from real directory names on disk, which are not
+ * necessarily trusted (any local process/project can create a folder with
+ * an arbitrary name), so every dynamic value must be escaped before being
+ * echoed into the page to prevent stored XSS.
+ */
+function e($value): string
+{
+    return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+}
+
 // Directories to ignore
 $ignore = array('.', '..', '.git', '.idea', 'vscode', 'node_modules', 'vendor');
-$dirs = array_filter(glob('*'), 'is_dir');
+// glob() returns false (not an empty array) if the current directory can't
+// be read at all, e.g. a permissions issue; fall back to an empty list
+// instead of feeding false into array_filter()/is_dir().
+$dirs = array_filter(glob('*') ?: [], 'is_dir');
 $projects = [];
 
 foreach ($dirs as $dir) {
-    if (!in_array($dir, $ignore)) {
-        $timestamp = filemtime($dir);
-        $projects[] = [
-            'name' => $dir,
-            'timestamp' => $timestamp,
-            'date' => date("M d", $timestamp),
-        ];
+    if (in_array($dir, $ignore, true)) {
+        continue;
     }
+
+    // A project folder can be deleted, renamed, or made unreadable by
+    // another process between the glob() call above and this line
+    // (classic TOCTOU race), or simply be a permission-denied mount.
+    // filemtime() returns false and raises an E_WARNING in that case;
+    // suppress the warning and just skip the entry instead of letting
+    // it leak a stat-failed warning into the page or, since PHP 8,
+    // pass a non-numeric false into date() (deprecated, and would
+    // render as "Jan 01" instead of being omitted).
+    $timestamp = @filemtime($dir);
+    if ($timestamp === false) {
+        continue;
+    }
+
+    $projects[] = [
+        'name' => $dir,
+        'timestamp' => $timestamp,
+        'date' => date("M d", $timestamp),
+    ];
 }
 
 $projects = ProjectSorter::byMostRecentlyModified($projects);
@@ -597,12 +626,12 @@ $menuGroups = [
 
         <?php foreach ($menuGroups as $groupName => $links): ?>
             <div class="menu-group">
-                <div class="section-title"><?= $groupName ?></div>
+                <div class="section-title"><?= e($groupName) ?></div>
                 <nav>
                     <?php foreach ($links as $link): ?>
-                        <a href="<?= $link['url'] ?>" target="_blank" class="nav-link">
-                            <i class="fas <?= $link['icon'] ?>"></i>
-                            <span><?= $link['name'] ?></span>
+                        <a href="<?= e($link['url']) ?>" target="_blank" class="nav-link">
+                            <i class="fas <?= e($link['icon']) ?>"></i>
+                            <span><?= e($link['name']) ?></span>
                         </a>
                     <?php endforeach; ?>
                 </nav>
@@ -638,19 +667,19 @@ $menuGroups = [
         <div class="grid-container">
             <div class="grid" id="grid">
                 <?php foreach ($projects as $project): ?>
-                    <div class="project-item" data-name="<?= strtolower($project['name']) ?>">
-                        <a href="/<?= $project['name'] ?>" class="card">
-                            <div class="bg-lg-text"><?= strtoupper(substr($project['name'], 0, 2)) ?></div>
+                    <div class="project-item" data-name="<?= e(strtolower($project['name'])) ?>">
+                        <a href="/<?= e(rawurlencode($project['name'])) ?>" class="card">
+                            <div class="bg-lg-text"><?= e(strtoupper(substr($project['name'], 0, 2))) ?></div>
                             <div>
                                 <div style="display:flex; justify-content:space-between;">
-                                    <div class="card-name"><?= $project['name'] ?></div>
-                                    <i class="fas fa-thumbtack pin-icon"
-                                        onclick="event.preventDefault(); togglePin(this, '<?= $project['name'] ?>')"></i>
+                                    <div class="card-name"><?= e($project['name']) ?></div>
+                                    <i class="fas fa-thumbtack pin-icon" data-project-name="<?= e($project['name']) ?>"
+                                        onclick="event.preventDefault(); togglePin(this)"></i>
                                 </div>
-                                <div class="card-date"><span class="status-led"></span> <?= $project['date'] ?></div>
+                                <div class="card-date"><span class="status-led"></span> <?= e($project['date']) ?></div>
                             </div>
                             <div class="card-actions">
-                                <span class="local-link">localhost/<?= $project['name'] ?></span>
+                                <span class="local-link">localhost/<?= e($project['name']) ?></span>
                                 <i class="fas fa-external-link-alt" style="color:var(--primary-red); font-size:0.8rem;"></i>
                             </div>
                         </a>
@@ -686,7 +715,8 @@ $menuGroups = [
         let pinned = JSON.parse(localStorage.getItem('my_pinned') || '[]');
         let sortMode = 'date';
 
-        function togglePin(icon, name) {
+        function togglePin(icon) {
+            const name = icon.dataset.projectName;
             const index = pinned.indexOf(name);
             index > -1 ? pinned.splice(index, 1) : pinned.push(name);
             localStorage.setItem('my_pinned', JSON.stringify(pinned));
@@ -698,7 +728,7 @@ $menuGroups = [
         function render() {
             const items = Array.from(document.querySelectorAll('.project-item'));
             items.forEach(item => {
-                const name = item.querySelector('.pin-icon').getAttribute('onclick').match(/'([^']+)'/)[1];
+                const name = item.querySelector('.pin-icon').dataset.projectName;
                 pinned.includes(name) ? item.classList.add('pinned') : item.classList.remove('pinned');
             });
 
