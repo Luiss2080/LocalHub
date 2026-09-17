@@ -5,6 +5,18 @@
  * Changes: Removed Design section, Restored Bold Gradient Logo
  */
 
+/**
+ * Escapes a value for safe output in an HTML context (text or attribute).
+ * Project names come from real directory names on disk, which are not
+ * necessarily trusted (any local process/project can create a folder with
+ * an arbitrary name), so every dynamic value must be escaped before being
+ * echoed into the page to prevent stored XSS.
+ */
+function e($value): string
+{
+    return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+}
+
 // Directories to ignore
 $ignore = array('.', '..', '.git', '.idea', 'vscode', 'node_modules', 'vendor');
 $dirs = array_filter(glob('*'), 'is_dir');
@@ -638,19 +650,19 @@ $menuGroups = [
         <div class="grid-container">
             <div class="grid" id="grid">
                 <?php foreach ($projects as $project): ?>
-                    <div class="project-item" data-name="<?= strtolower($project['name']) ?>">
-                        <a href="/<?= $project['name'] ?>" class="card">
-                            <div class="bg-lg-text"><?= strtoupper(substr($project['name'], 0, 2)) ?></div>
+                    <div class="project-item" data-name="<?= e(strtolower($project['name'])) ?>">
+                        <a href="/<?= e(rawurlencode($project['name'])) ?>" class="card">
+                            <div class="bg-lg-text"><?= e(strtoupper(substr($project['name'], 0, 2))) ?></div>
                             <div>
                                 <div style="display:flex; justify-content:space-between;">
-                                    <div class="card-name"><?= $project['name'] ?></div>
+                                    <div class="card-name"><?= e($project['name']) ?></div>
                                     <i class="fas fa-thumbtack pin-icon"
-                                        onclick="event.preventDefault(); togglePin(this, '<?= $project['name'] ?>')"></i>
+                                        onclick="event.preventDefault(); togglePin(this, '<?= e($project['name']) ?>')"></i>
                                 </div>
-                                <div class="card-date"><span class="status-led"></span> <?= $project['date'] ?></div>
+                                <div class="card-date"><span class="status-led"></span> <?= e($project['date']) ?></div>
                             </div>
                             <div class="card-actions">
-                                <span class="local-link">localhost/<?= $project['name'] ?></span>
+                                <span class="local-link">localhost/<?= e($project['name']) ?></span>
                                 <i class="fas fa-external-link-alt" style="color:var(--primary-red); font-size:0.8rem;"></i>
                             </div>
                         </a>
