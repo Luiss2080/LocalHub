@@ -1,96 +1,115 @@
-# 🖥️ LocalHub
+<div align="center">
+  <img src="docs/assets/logo.svg" width="96" alt="Logo de LocalHub" />
+  <h1>LocalHub</h1>
+  <p><b>Panel de inicio para Laragon: lista tus proyectos locales por actividad reciente en una sola página PHP.</b></p>
+  <img src="https://img.shields.io/badge/estado-funcional-2ea44f?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/PHP-%E2%89%A5%208.0-777BB4?style=for-the-badge&logo=php&logoColor=white" />
+  <img src="https://img.shields.io/badge/PHPUnit-11-3c9cd7?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/tests-6-blue?style=for-the-badge" />
+  <img src="https://github.com/Luiss2080/LocalHub/actions/workflows/ci.yml/badge.svg" />
+  <p>
+    <a href="#-inicio-rápido">Inicio rápido</a> ·
+    <a href="#-características">Características</a> ·
+    <a href="#-arquitectura">Arquitectura</a> ·
+    <a href="#-pruebas">Pruebas</a> ·
+    <a href="#-lo-que-todavía-no-existe">Limitaciones</a>
+  </p>
+</div>
 
-> Un panel de inicio "Cyberpunk" para Laragon que reemplaza la página de
-> bienvenida por defecto: lista todos tus proyectos locales ordenados por
-> actividad reciente y te da acceso rápido a phpMyAdmin y otras
-> herramientas de desarrollo, todo en una sola página PHP sin
-> dependencias de backend.
+LocalHub reemplaza la página de bienvenida de Laragon por un panel con tema "Cyberpunk Red". Escanea las carpetas junto a `index.php` (normalmente `C:\laragon\www`), las muestra como tarjetas ordenadas por última modificación y ofrece búsqueda, pines y accesos rápidos. **No** es un gestor de servidores: no inicia ni detiene servicios ni crea virtual hosts.
 
-## Características
+## 🎬 Vista rápida
 
-Verificadas directamente en `index.php`:
+<div align="center">
+  <img src="docs/screenshots/panel.png" width="820" alt="Panel de LocalHub con tarjetas de proyectos de ejemplo, buscador y barra lateral en tema rojo oscuro" />
+</div>
 
-- **Listado automático de proyectos**: escanea los directorios dentro de
-  la carpeta donde vive el panel (típicamente `www/` de Laragon) e ignora
-  `.git`, `.idea`, `vscode`, `node_modules` y `vendor`.
-- **Orden por actividad**: los proyectos se muestran del más
-  recientemente modificado (`filemtime`) al más antiguo.
-- **Búsqueda instantánea**: campo de búsqueda del lado del cliente que
-  filtra la grilla en tiempo real (atajo de teclado `/` para enfocarlo).
-- **Fijar proyectos (pin)**: cada tarjeta tiene un icono para fijar un
-  proyecto; los fijados siempre aparecen primero. Se guarda en
-  `localStorage` del navegador (por dispositivo, no se sincroniza).
-- **Alternar orden**: botón para alternar entre orden por actividad y
-  orden alfabético (los proyectos fijados siempre van primero en ambos
-  modos).
-- **Dos vistas de grilla**: normal y compacta.
-- **Sidebar colapsable**, con contador de proyectos y versión de PHP en
-  ejecución (`phpversion()`).
-- **Accesos rápidos**: enlace directo a `/phpmyadmin`; "Terminal" y
-  "Virtual Host" son accesos de marcador de posición (`href="#"`) listos
-  para conectarse a una herramienta real más adelante.
-- **Enlaces de desarrollo**: GitHub, Stack Overflow y ChatGPT, abiertos
-  en una pestaña nueva.
-- **Modo pantalla completa** y botón de recarga manual.
-- Tema visual "Cyberpunk Red" con cuadrícula animada de fondo, totalmente
-  en CSS/JS, sin librerías de frontend.
+> Captura real con carpetas de ejemplo creadas para la demo. La tarjeta `src` aparece porque, en esa prueba, `src/` estaba junto a `index.php` y el panel lista todo directorio no ignorado.
 
-## Cómo usar
+## ✨ Características
 
-1. Copia `index.php` (y la carpeta `src/`, ver más abajo) a la raíz de tu
-   carpeta de proyectos de Laragon (por defecto `C:\laragon\www`).
-2. Abre `http://localhost` en el navegador: verás la grilla con todas las
-   carpetas de proyecto que tengas junto a `index.php`.
-3. Haz clic en cualquier tarjeta para abrir ese proyecto en
-   `localhost/<nombre-del-proyecto>`.
+| Característica | Detalle |
+|---|---|
+| Listado automático | Escanea con `glob('*')` los directorios hermanos de `index.php`; ignora `.git`, `.idea`, `vscode`, `node_modules` y `vendor`. |
+| Orden por actividad | Del más recientemente modificado (`filemtime`) al más antiguo, vía `ProjectSorter`. Omite entradas cuya fecha no se puede leer. |
+| Búsqueda instantánea | Filtro en el cliente; el atajo `/` enfoca el campo. |
+| Pines | Fijas proyectos y aparecen primero; se guardan en `localStorage` (por navegador, sin sincronización). |
+| Orden alfabético | Botón para alternar actividad / alfabético. |
+| Vistas | Grilla normal y compacta, sidebar colapsable, pantalla completa y recarga manual. |
+| Datos en barra lateral | Contador de proyectos y versión de PHP en ejecución. |
+| Accesos rápidos | Enlace a `/phpmyadmin`, más GitHub, Stack Overflow y ChatGPT (pestaña nueva). |
+| Salida escapada | Los nombres de carpeta se escapan con `htmlspecialchars` para evitar XSS. |
 
-## Instalación y uso local
+## 🏗️ Arquitectura
 
-Requiere PHP 8.0+ (probado con PHP 8.5) y, opcionalmente, Composer si vas
-a ejecutar las pruebas automatizadas.
-
-```bash
-git clone https://github.com/Luiss2080/Panel_Laragon.git
-cd Panel_Laragon
-
-# Servir con el servidor embebido de PHP para probarlo sin Laragon:
-php -S localhost:8000
+```mermaid
+flowchart LR
+    FS["Carpetas de www/"] -->|"glob + filemtime"| IDX["index.php"]
+    IDX -->|"lista de proyectos"| SORT["ProjectSorter::byMostRecentlyModified"]
+    SORT --> HTML["HTML + CSS + JS vanilla"]
+    HTML --> LS[("localStorage: my_pinned")]
 ```
 
-Para usarlo como panel real de Laragon, coloca los archivos en la raíz de
-tu carpeta `www` (donde Laragon ya sirve tus demás proyectos como
-subcarpetas hermanas).
+Todo vive en `index.php` (lógica, plantilla, CSS y JS). Solo el ordenamiento se extrajo a `src/ProjectSorter.php` para poder probarlo.
 
-## Tecnologías
+## 🚀 Inicio rápido
 
-- PHP puro (sin framework), un único punto de entrada (`index.php`).
-- HTML5 + CSS3 (variables CSS, grid, backdrop-filter) y JavaScript vanilla
-  para la interactividad del lado del cliente (búsqueda, pines, vistas).
-- Font Awesome y las fuentes Outfit / JetBrains Mono vía CDN.
-- Composer + PHPUnit para las pruebas unitarias de la lógica de
-  ordenamiento (`src/ProjectSorter.php`).
-- GitHub Actions para lint de PHP (`php -l`) y ejecución de PHPUnit en
-  cada push/PR.
+| Requisito | Versión |
+|---|---|
+| PHP | 8.0 o superior (probado con 8.5) |
+| Composer | Opcional, solo para las pruebas |
+| Internet | Fuentes y Font Awesome se cargan por CDN |
 
-## Tests
+1. Clona el repositorio.
+   ```bash
+   git clone https://github.com/Luiss2080/LocalHub.git
+   cd LocalHub
+   ```
+2. Pruébalo sin Laragon con el servidor embebido de PHP.
+   ```bash
+   php -S localhost:8000
+   ```
+3. Para usarlo como panel real, copia `index.php` y la carpeta `src/` a la raíz de tu `www` de Laragon y abre `http://localhost`.
+
+Cada tarjeta abre `/<nombre-del-proyecto>` en el mismo host.
+
+<details>
+<summary>Estructura de carpetas</summary>
+
+```text
+index.php                 # Panel completo (PHP + HTML + CSS + JS)
+src/ProjectSorter.php     # Ordenamiento puro, testeable
+tests/ProjectSorterTest.php
+.github/workflows/ci.yml  # php -l + PHPUnit en PHP 8.1, 8.2 y 8.3
+composer.json  phpunit.xml
+```
+
+</details>
+
+## 🧪 Pruebas
 
 ```bash
 composer install
-composer exec phpunit
-# o directamente:
 vendor/bin/phpunit
 ```
 
-Las pruebas cubren `ProjectSorter`, la lógica pura de "ordenar por
-actividad" extraída de `index.php` (orden descendente por timestamp,
-lista vacía, un solo proyecto, empates de timestamp, timestamps
-negativos/cero, y que el arreglo de entrada no se mute).
+`tests/ProjectSorterTest.php` define 6 tests sobre `ProjectSorter`: orden descendente, lista vacía, un solo proyecto, timestamps iguales, entrada sin mutar y timestamps cero/negativos. La interfaz (`index.php`) no tiene pruebas. En este trabajo no se ejecutó PHPUnit localmente (no había Composer); la cifra sale de leer el archivo de tests. El CI corre `php -l` sobre todos los `.php` y PHPUnit.
 
-## Licencia
+## 🔒 Seguridad
 
-Este repositorio no incluye un archivo `LICENSE`. Sin uno, por defecto
-aplican los derechos de autor exclusivos del autor (todos los derechos
-reservados): técnicamente no está autorizado su uso, copia o
-distribución por terceros hasta que se agregue una licencia explícita.
-Si la intención es que el proyecto sea de código abierto, se recomienda
-añadir un archivo `LICENSE` (por ejemplo MIT) cuanto antes.
+- Nombres de proyecto escapados al imprimirlos y URL con `rawurlencode`.
+- No hay autenticación: está pensado solo para uso local; no lo expongas a Internet.
+
+## 🚧 Lo que todavía no existe
+
+- "Terminal" y "Virtual Host" son marcadores (`href="#"`) sin función.
+- Los pines no se sincronizan entre dispositivos.
+- No excluye su propia carpeta `src/` ni carpetas como `docs/` si están junto a `index.php`.
+- Interfaz y menús en inglés, con marca "LUISSXD" fija en el código.
+- Requiere CDN externos para tipografías e iconos.
+
+## 📄 Licencia
+
+Sin licencia definida: todos los derechos reservados por defecto.
+
+<div align="center"><sub>Hecho por Luiss2080 · panel local para Laragon</sub></div>
